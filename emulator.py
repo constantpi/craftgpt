@@ -471,7 +471,7 @@ class Model:
         for block in self.transformer:
             value = block.forward(value)
         
-        set_input(value)
+        # set_input(value)
         value = self.ln_f.forward(value)
         ans = self.unembedding.forward(value)
         self.index += 1
