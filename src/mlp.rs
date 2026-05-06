@@ -15,19 +15,23 @@ pub struct MLP {
 
 impl MLP {
     pub fn new(block_num: usize) -> Result<Self> {
-        // let mut weights_up = Box::new([[0u8; EMBED_SIZE]; INTERMEDIATE_SIZE]);
-        // let mut weights_down = Box::new([[0u8; INTERMEDIATE_SIZE]; EMBED_SIZE]);
         let mut weights_up: Box<[[u8; EMBED_SIZE]; INTERMEDIATE_SIZE]> =
-            unsafe { Box::new_zeroed().assume_init() };
+            vec![[0u8; EMBED_SIZE]; INTERMEDIATE_SIZE]
+                .into_boxed_slice()
+                .try_into()
+                .unwrap();
         let mut weights_down: Box<[[u8; INTERMEDIATE_SIZE]; EMBED_SIZE]> =
-            unsafe { Box::new_zeroed().assume_init() };
+            vec![[0u8; INTERMEDIATE_SIZE]; EMBED_SIZE]
+                .into_boxed_slice()
+                .try_into()
+                .unwrap();
         for i in 0..24 {
             let path = format!(
                 "weights/weight_files/mlp/mlp_{}.bin",
                 25 + 48 * block_num + i
             );
             let mut f = File::open(path)?;
-            let mut weights = [0u8; 9600];
+            let mut weights = vec![0u8; 9600];
             for j in 0..9600 {
                 let mut buf = [0u8; 1];
                 f.read_exact(&mut buf)?;
@@ -55,7 +59,7 @@ impl MLP {
                 1 + 48 * block_num + i
             );
             let mut f = File::open(path)?;
-            let mut weights = [0u8; 9600];
+            let mut weights = vec![0u8; 9600];
             for j in 0..9600 {
                 let mut buf = [0u8; 1];
                 f.read_exact(&mut buf)?;
@@ -78,14 +82,14 @@ impl MLP {
             }
         }
         Ok(Self {
-            matmul_up: MatMul::new(*weights_up),
-            matmul_down: MatMul::new(*weights_down),
+            matmul_up: MatMul::new(weights_up),
+            matmul_down: MatMul::new(weights_down),
         })
     }
 
-    pub fn forward(&self, input: &[usize; EMBED_SIZE]) -> [usize; EMBED_SIZE] {
+    pub fn forward(&self, input: Box<[usize; EMBED_SIZE]>) -> Box<[usize; EMBED_SIZE]> {
         let intermediate = self.matmul_up.forward(input);
-        self.matmul_down.forward(&intermediate)
+        self.matmul_down.forward(intermediate)
     }
 }
 
@@ -155,8 +159,8 @@ mod tests {
             2105686, 2779851, 354029, 3609085, 15375515, 14701390, 4673312, 13981117, 15564698,
             11843126, 6810, 318091, 2833510, 13879817,
         ];
-        let output = mlp.forward(&input);
-        assert_eq!(output, ans);
+        let output = mlp.forward(Box::new(input));
+        assert_eq!(output, Box::new(ans));
 
         let input = [
             14549547, 3302307, 7019226, 6140903, 9767124, 1004077, 8537983, 7470592, 9539318,
@@ -216,8 +220,8 @@ mod tests {
             14843925, 4092303, 844078, 525887, 15127755, 11734110, 1725977, 3543455, 14833689,
             14842388, 1892434, 15330056, 12867935, 6846895, 14682055,
         ];
-        let output = mlp.forward(&input);
-        assert_eq!(output, ans);
+        let output = mlp.forward(Box::new(input));
+        assert_eq!(output, Box::new(ans));
         Ok(())
     }
 }

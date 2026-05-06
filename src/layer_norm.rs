@@ -5,14 +5,15 @@ use std::fs::File;
 use std::io::{self, Read};
 
 pub struct LayerNorm {
-    pub weights: [usize; EMBED_SIZE],
+    pub weights: Box<[usize; EMBED_SIZE]>,
 }
 
 impl LayerNorm {
     pub fn new(index: usize) -> Result<Self> {
         let path = format!("weights/weight_files/layernorm/ln_{}.bin", index);
         let mut f = File::open(path)?;
-        let mut weights = [0usize; EMBED_SIZE];
+        let mut weights: Box<[usize; EMBED_SIZE]> =
+            vec![0; EMBED_SIZE].into_boxed_slice().try_into().unwrap();
         for i in 0..EMBED_SIZE {
             let mut buf = [0u8; 3];
             f.read_exact(&mut buf)?;
@@ -22,7 +23,7 @@ impl LayerNorm {
         Ok(Self { weights })
     }
 
-    pub fn forward(&self, input: &[usize; EMBED_SIZE]) -> [usize; EMBED_SIZE] {
+    pub fn forward(&self, input: Box<[usize; EMBED_SIZE]>) -> Box<[usize; EMBED_SIZE]> {
         fn sub(a: usize, b: usize) -> usize {
             let ai32 = a as i32;
             let bi32 = b as i32;
@@ -125,7 +126,7 @@ mod tests {
             1706126, 1567351, 1444504, 1429182, 1745056, 1513093, 1650018, 1714257, 1676222,
             1687846, 1277292, 1726765, 1460305, 1676614, 1629092,
         ];
-        assert_eq!(ln.weights, ans);
+        assert_eq!(ln.weights, Box::new(ans));
         Ok(())
     }
 
@@ -190,8 +191,8 @@ mod tests {
             850571, 14622499, 14983725, 1684738, 15153141, 14612124, 2290950, 508200, 15909804,
             379035, 16020661, 2625004, 921653, 15234156, 463446,
         ];
-        let output = ln.forward(&input);
-        assert_eq!(output, ans);
+        let output = ln.forward(Box::new(input));
+        assert_eq!(output, Box::new(ans));
 
         let input2 = [
             3532091, 8168815, 14173006, 2308887, 12951123, 15794523, 14945901, 6129168, 4974903,
@@ -251,8 +252,8 @@ mod tests {
             16240677, 15609814, 16287748, 16419196, 16296192, 16219277, 16194055, 21655, 16043717,
             714159, 12683, 16520528, 1193847,
         ];
-        let output2 = ln.forward(&input2);
-        assert_eq!(output2, ans2);
+        let output2 = ln.forward(Box::new(input2));
+        assert_eq!(output2, Box::new(ans2));
         Ok(())
     }
 }

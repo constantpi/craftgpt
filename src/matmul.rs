@@ -1,7 +1,7 @@
 use crate::consts::*;
 
 pub struct MatMul<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize, const RELU: bool> {
-    weights: [[(bool, u8, u8, u8); INPUT_SIZE]; OUTPUT_SIZE],
+    weights: Box<[[(bool, u8, u8, u8); INPUT_SIZE]; OUTPUT_SIZE]>,
 }
 
 fn decode_weight(sign: bool, w: u8) -> (bool, u8, u8, u8) {
@@ -18,13 +18,31 @@ fn decode_weight(sign: bool, w: u8) -> (bool, u8, u8, u8) {
 impl<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize, const RELU: bool>
     MatMul<INPUT_SIZE, OUTPUT_SIZE, RELU>
 {
-    pub fn new(weights: [[u8; INPUT_SIZE]; OUTPUT_SIZE]) -> Self {
+    pub fn new(weights: Box<[[u8; INPUT_SIZE]; OUTPUT_SIZE]>) -> Self {
+        let mut decoded_weights: Box<[[(bool, u8, u8, u8); INPUT_SIZE]; OUTPUT_SIZE]> =
+            vec![[(false, 0, 0, 0); INPUT_SIZE]; OUTPUT_SIZE]
+                .into_boxed_slice()
+                .try_into()
+                .unwrap();
+
+        decoded_weights
+            .iter_mut()
+            .zip(weights.iter())
+            .for_each(|(decoded_row, &row)| {
+                decoded_row
+                    .iter_mut()
+                    .zip(row.iter())
+                    .for_each(|(decoded_cell, &w)| {
+                        *decoded_cell = decode_weight(false, w);
+                    });
+            });
+
         Self {
-            weights: weights.map(|row| row.map(|w| decode_weight(false, w))),
+            weights: decoded_weights,
         }
     }
 
-    pub fn forward(&self, input: &[usize; INPUT_SIZE]) -> [usize; OUTPUT_SIZE] {
+    pub fn forward(&self, input: Box<[usize; INPUT_SIZE]>) -> Box<[usize; OUTPUT_SIZE]> {
         // 符号拡張関数
         fn sign_extend(x: usize) -> usize {
             let x = x & MATMUL_BIG_MASK;
@@ -35,40 +53,57 @@ impl<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize, const RELU: bool>
             }
         }
 
-        let normed = input.map(|x| {
-            let abs = x & FIXED_POINT_MASK;
-            if abs > FIXED_POINT_MASK / 2 {
-                abs + (((1 << MATMUL_EXTRA_PRECISION) - 1) << FIXED_POINT_SIZE)
-            } else {
-                abs
-            }
-        });
+        // 1. normed をヒープ上に確保し、ループで計算結果を書き込む
+        let mut normed: Box<[usize; INPUT_SIZE]> =
+            vec![0; INPUT_SIZE].into_boxed_slice().try_into().unwrap();
 
-        let output = self.weights.map(|row| {
-            let mut cur = 0;
-            row.iter()
-                .zip(normed.iter())
-                .for_each(|(&(is_minus, w1, w2, w3), &x)| {
-                    let w1 = w1 as usize;
-                    let w2 = w2 as usize;
-                    let w3 = w3 as usize;
-                    let big = sign_extend(x * w2);
-                    let small = sign_extend(x * w3);
-                    let abs_cont = ((big >> w1) + (small >> (w1 + 3))) & FIXED_POINT_MASK;
-                    let cont = if is_minus {
-                        (FIXED_POINT_MASK + 1 - abs_cont) & FIXED_POINT_MASK
-                    } else {
-                        abs_cont
-                    };
-                    cur += cont;
-                    cur &= FIXED_POINT_MASK;
-                });
-            if RELU && cur > (FIXED_POINT_MASK / 2) {
-                0
-            } else {
-                cur
-            }
-        });
+        normed
+            .iter_mut()
+            .zip(input.iter())
+            .for_each(|(normed_i, &x)| {
+                let abs = x & FIXED_POINT_MASK;
+                *normed_i = if abs > FIXED_POINT_MASK / 2 {
+                    abs + (((1 << MATMUL_EXTRA_PRECISION) - 1) << FIXED_POINT_SIZE)
+                } else {
+                    abs
+                };
+            });
+
+        // 2. output をヒープ上に確保し、ループで計算結果を書き込む
+        let mut output: Box<[usize; OUTPUT_SIZE]> =
+            vec![0; OUTPUT_SIZE].into_boxed_slice().try_into().unwrap();
+
+        output
+            .iter_mut()
+            .zip(self.weights.iter())
+            .for_each(|(output_i, &row)| {
+                let mut cur = 0;
+
+                // self.weights[i] (1行分) と normed を zip して計算
+                row.iter()
+                    .zip(normed.iter())
+                    .for_each(|(&(is_minus, w1, w2, w3), &x)| {
+                        let w1 = w1 as usize;
+                        let w2 = w2 as usize;
+                        let w3 = w3 as usize;
+                        let big = sign_extend(x * w2);
+                        let small = sign_extend(x * w3);
+                        let abs_cont = ((big >> w1) + (small >> (w1 + 3))) & FIXED_POINT_MASK;
+                        let cont = if is_minus {
+                            (FIXED_POINT_MASK + 1 - abs_cont) & FIXED_POINT_MASK
+                        } else {
+                            abs_cont
+                        };
+                        cur += cont;
+                        cur &= FIXED_POINT_MASK;
+                    });
+
+                *output_i = if RELU && cur > (FIXED_POINT_MASK / 2) {
+                    0
+                } else {
+                    cur
+                };
+            });
 
         output
     }
@@ -91,9 +126,9 @@ mod tests {
             ([[125, 133, 77], [87, 199, 167]], [83, 2, 81], [35, 2]),
         ];
         for (weights, input, ans) in data {
-            let matmul = MatMul::<3, 2, false>::new(weights);
-            let output = matmul.forward(&input);
-            assert_eq!(output, ans);
+            let matmul = MatMul::<3, 2, false>::new(Box::new(weights));
+            let output = matmul.forward(Box::new(input));
+            assert_eq!(output, Box::new(ans));
         }
 
         let weights = [
@@ -148,8 +183,8 @@ mod tests {
             15364410, 15525973, 2167098, 9009896, 11416486, 12097014, 1266462, 268242, 2071641,
             14265011,
         ];
-        let matmul = MatMul::<20, 10, false>::new(weights);
-        let output = matmul.forward(&input);
-        assert_eq!(output, ans);
+        let matmul = MatMul::<20, 10, false>::new(Box::new(weights));
+        let output = matmul.forward(Box::new(input));
+        assert_eq!(output, Box::new(ans));
     }
 }
