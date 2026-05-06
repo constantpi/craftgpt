@@ -87,9 +87,9 @@ impl MLP {
         })
     }
 
-    pub fn forward(&self, input: Box<[usize; EMBED_SIZE]>) -> Box<[usize; EMBED_SIZE]> {
+    pub fn forward(&self, input: &Box<[usize; EMBED_SIZE]>) -> Box<[usize; EMBED_SIZE]> {
         let intermediate = self.matmul_up.forward(input);
-        self.matmul_down.forward(intermediate)
+        self.matmul_down.forward(&intermediate)
     }
 }
 
@@ -159,7 +159,7 @@ mod tests {
             2105686, 2779851, 354029, 3609085, 15375515, 14701390, 4673312, 13981117, 15564698,
             11843126, 6810, 318091, 2833510, 13879817,
         ];
-        let output = mlp.forward(Box::new(input));
+        let output = mlp.forward(&Box::new(input));
         assert_eq!(output, Box::new(ans));
 
         let input = [
@@ -220,7 +220,7 @@ mod tests {
             14843925, 4092303, 844078, 525887, 15127755, 11734110, 1725977, 3543455, 14833689,
             14842388, 1892434, 15330056, 12867935, 6846895, 14682055,
         ];
-        let output = mlp.forward(Box::new(input));
+        let output = mlp.forward(&Box::new(input));
         assert_eq!(output, Box::new(ans));
         Ok(())
     }

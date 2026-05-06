@@ -43,7 +43,7 @@ impl<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize, const RELU: bool>
         }
     }
 
-    pub fn forward(&self, input: Box<[usize; INPUT_SIZE]>) -> Box<[usize; OUTPUT_SIZE]> {
+    pub fn forward(&self, input: &Box<[usize; INPUT_SIZE]>) -> Box<[usize; OUTPUT_SIZE]> {
         // 符号拡張関数
         fn sign_extend(x: usize) -> usize {
             let x = x & MATMUL_BIG_MASK;
@@ -128,7 +128,7 @@ mod tests {
         ];
         for (weights, input, ans) in data {
             let matmul = MatMul::<3, 2, false>::new(Box::new(weights));
-            let output = matmul.forward(Box::new(input));
+            let output = matmul.forward(&Box::new(input));
             assert_eq!(output, Box::new(ans));
         }
 
@@ -185,7 +185,7 @@ mod tests {
             14265011,
         ];
         let matmul = MatMul::<20, 10, false>::new(Box::new(weights));
-        let output = matmul.forward(Box::new(input));
+        let output = matmul.forward(&Box::new(input));
         assert_eq!(output, Box::new(ans));
     }
 }
