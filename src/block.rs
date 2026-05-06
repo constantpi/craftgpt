@@ -1,9 +1,9 @@
 use color_eyre::eyre::Result;
 
 use crate::attention::Attention;
+use crate::consts::*;
 use crate::layer_norm::LayerNorm;
 use crate::mlp::MLP;
-use crate::{consts::*, mlp};
 
 pub struct Block {
     attention: Attention,
@@ -27,10 +27,7 @@ impl Block {
     }
 
     pub fn forward(&mut self, input: &[usize; EMBED_SIZE]) -> Box<[usize; EMBED_SIZE]> {
-        println!("Input: {:?}", input);
-        println!("norm1 result: {:?}", self.norm1.forward(input));
-        let att_diff = self.attention.forward(&self.norm1.forward(&input));
-        println!("att_diff: {:?}", att_diff);
+        let att_diff = self.attention.forward(&self.norm1.forward(input));
         let att_out = input
             .iter()
             .zip(att_diff.iter())
@@ -38,9 +35,7 @@ impl Block {
             .collect::<Vec<_>>()
             .try_into()
             .unwrap();
-        println!("att_out: {:?}", att_out);
         let mlp_diff = self.mlp.forward(&self.norm2.forward(&att_out));
-        println!("mlp_diff: {:?}", mlp_diff);
         att_out
             .iter()
             .zip(mlp_diff.iter())
