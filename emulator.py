@@ -36,15 +36,16 @@ def print_weights(weights, name="weights/expect_output.txt"):
                 i += 1
         print("ok")
 
+
 def print_precision(weight, precision=24):
     print(str(bin(weight))[2:].zfill(precision))
+
 
 def set_input(weights):
     with open("weights/weight_files/input.bin", "wb") as f:
         for i in range(len(weights)):
             f.write(weights[i].to_bytes(3, byteorder="little"))
     print_weights(weights, "weights/input.txt")
-
 
 
 class MatMul:
@@ -72,7 +73,7 @@ class MatMul:
         self.input_size = input_size
         self.output_size = output_size
         self.relu = relu
-    
+
     def forward(self, input):
         output = []
         normed = input[:]
@@ -101,7 +102,7 @@ class MatMul:
             else:
                 output.append(cur)
         return output
-    
+
 
 class LayerNorm:
     def __init__(self, index):
@@ -123,7 +124,6 @@ class LayerNorm:
         mean = ((mean * LAYERNORM_CONST) >> 32)
         if neg:
             mean = (-mean) & FIXED_POINT_MASK
-        print(f"mean: {mean}")
         sigma2 = EPS
         for v in input:
             diff = v - mean
@@ -152,7 +152,6 @@ class LayerNorm:
                 res = (-res) & FIXED_POINT_MASK
             result.append(res)
         return result
-
 
 
 class MLP:
@@ -186,12 +185,11 @@ class MLP:
 
         self.matmul_up = MatMul(weights_up, EMBED_SIZE, EMBED_SIZE * MLP_SCALE, True)
         self.matmul_down = MatMul(weights_down, EMBED_SIZE * MLP_SCALE, EMBED_SIZE)
-    
+
     def forward(self, input):
         res = self.matmul_up.forward(input)
         res = self.matmul_down.forward(res)
         return res
-
 
 
 class Attention:
@@ -241,7 +239,7 @@ class Attention:
 
         self.k_cache = [[] for i in range(HEADS)]
         self.v_cache = [[] for i in range(HEADS)]
-    
+
     def to_float16(self, value, offset=0):
         neg = False
         if value > FIXED_POINT_MASK // 2:
@@ -278,7 +276,7 @@ class Attention:
         for i in range(HEADS):
             self.k_cache[i].pop()
             self.v_cache[i].pop()
-    
+
     def forward(self, input, token=0):
         res = []
         proj_input = []
@@ -308,7 +306,7 @@ class Attention:
                     relevance[i] = (-relevance[i]) & FIXED_POINT_MASK
                 relevance[i] ^= (1 << (FIXED_POINT_SIZE - 1))
                 biggest = max(biggest, relevance[i])
-            
+
             output = [0] * HEAD_SIZE
             softmax_sum = 0
             for i in range(len(relevance)):
@@ -332,9 +330,8 @@ class Attention:
                     output[j] += self.float_mult(res, v)
                     output[j] &= FIXED_POINT_MASK
             proj_input += output
-        
-        return self.matmul_proj.forward(proj_input)
 
+        return self.matmul_proj.forward(proj_input)
 
 
 class Block:
@@ -352,7 +349,6 @@ class Block:
         for i in range(240):
             input[i] = (input[i] + mlp_diff[i]) & FIXED_POINT_MASK
         return input
-
 
 
 class Embedding:
@@ -377,16 +373,15 @@ class Embedding:
                         if cur >= (1 << 17):
                             cur |= (1 << 18) * ((1 << 6) - 1)
                         self.wpe[-1].append(cur)
-    
+
     def get_weights(self, token, pos=-1):
         weights = self.wte[token].copy()
         if pos != -1:
-            assert(0 <= pos < 64)
+            assert (0 <= pos < 64)
             for i in range(240):
                 weights[i] += self.wpe[pos][i]
                 weights[i] &= FIXED_POINT_MASK
         return weights
-
 
 
 class Unembedding:
@@ -410,7 +405,7 @@ class Unembedding:
         with open(f"weights/weight_files/softmax_2.bin", "rb") as f:
             for j in range(1024):
                 self.softmax_exp.append(int.from_bytes(f.read(3), byteorder="little"))
-    
+
     def forward(self, input):
         logits = self.lm_head.forward(input)
         biggest = 0
@@ -440,7 +435,6 @@ class Unembedding:
                 if res > output[j]:
                     res, output[j] = output[j], res
         return output
-        
 
 
 class PRNG:
@@ -453,9 +447,8 @@ class PRNG:
             self.seed <<= 1
             self.seed &= ((1 << 23) - 1)
             self.seed += next_bit
-        
-        return self.seed
 
+        return self.seed
 
 
 class Model:
@@ -466,12 +459,12 @@ class Model:
         self.unembedding = Unembedding()
         print("Model loaded.")
         self.index = 0
-    
+
     def process(self, token):
         value = self.tokens.get_weights(token, self.index)
         for block in self.transformer:
             value = block.forward(value)
-        
+
         # set_input(value)
         value = self.ln_f.forward(value)
         ans = self.unembedding.forward(value)
@@ -482,7 +475,6 @@ class Model:
         self.index -= 1
         for block in self.transformer:
             block.att.undo_last()
-
 
 
 def get_prompt(tokens):
@@ -503,7 +495,6 @@ def get_prompt(tokens):
     return ans
 
 
-
 def run_model():
     tokens = []
     with open("tokens.txt", "r") as f:
@@ -518,7 +509,7 @@ def run_model():
         conversation.extend(prompt + [1])
         for token in prompt:
             print(f"Processing token '{tokens[token]}'")
-            assert(0 <= token < 1920)
+            assert (0 <= token < 1920)
             model.process(token)
         if seed == -1:
             nxt = 1
@@ -566,6 +557,7 @@ def test_matmul():
     print("Input:", input)
     print("Output:", output)
 
+
 def test_layernorm():
     ln = LayerNorm(1)
     import random
@@ -573,6 +565,7 @@ def test_layernorm():
     output = ln.forward(input)
     print("Input:", input)
     print("Output:", output)
+
 
 def test_mlp():
     mlp = MLP(0)
@@ -582,6 +575,7 @@ def test_mlp():
     print("Input:", input)
     print("Output:", output)
 
+
 def test_to_float16():
     att = Attention(0)
     import random
@@ -590,6 +584,7 @@ def test_to_float16():
         offset = random.randint(0, 10)
         print(f"Value: {value}, offset: {offset}")
         print(f"Float16: {att.to_float16(value, offset)}")
+
 
 def test_float_mult():
     att = Attention(0)
@@ -607,39 +602,40 @@ def test_float_mult():
         print(f"a: {a}, b: {b}, shift: {shift}")
         print(f"Result: {att.float_mult(a, b, shift)}")
 
+
 def test_attention():
     att = Attention(0)
     input = [
-                    13569162, 1988803, 4487552, 2666055, 2611876, 885597, 1423401, 14057705,
-                    15735734, 12587235, 3285333, 6607230, 2639940, 5386554, 9464539, 6146983,
-                    15387328, 9456372, 3554742, 6818103, 15972048, 2865738, 5901839, 7744725,
-                    9736810, 3306, 9052736, 13440844, 8912305, 913176, 14707686, 1728239, 11663585,
-                    12289556, 9098430, 13902842, 15446537, 5260328, 9161053, 5146043, 16541288,
-                    1694205, 12275327, 11840126, 16452733, 11452445, 6303302, 12347467, 2010123,
-                    14254604, 12648413, 8767275, 10429219, 6194920, 2640486, 833087, 2286873,
-                    13876840, 930401, 1523842, 9604354, 13426678, 12715881, 1843669, 12123226,
-                    3816089, 7787883, 12838759, 10038008, 11221216, 4043926, 16398884, 2258967,
-                    2549370, 11557773, 3914954, 2057901, 9007775, 15643236, 14880433, 6553354,
-                    6627077, 7772646, 11922986, 144975, 2855643, 1874924, 12239846, 12643863,
-                    7286502, 2630086, 4608568, 1872568, 14554460, 2397008, 8190005, 1327013,
-                    11496395, 3766865, 13780558, 8261126, 8856817, 1017040, 4034482, 1668310,
-                    1720322, 5763631, 9784610, 3149864, 7376476, 470772, 16636619, 1429294,
-                    3297293, 7303194, 9182932, 16612704, 13223066, 11238813, 6749710, 8892240,
-                    6132489, 9465684, 15399858, 2891564, 7887514, 11699871, 10470447, 7437051,
-                    9720707, 10834756, 6940111, 6957356, 8666892, 6225285, 15015927, 12367961,
-                    899261, 16472872, 11278788, 10958556, 1117284, 7390412, 16145822, 6498412,
-                    14670807, 1640341, 12291139, 8194227, 12794238, 13230383, 2314684, 9954170,
-                    10314750, 13349647, 8577392, 8917104, 13844860, 9082462, 15235533, 6968832,
-                    13460784, 11906303, 15643704, 1643590, 12715535, 6795446, 4187344, 5336731,
-                    5143085, 3223979, 1181838, 16750363, 4508871, 6690716, 14392317, 9900609,
-                    16207015, 934955, 12082028, 10685982, 14519036, 4888425, 2468366, 9474638,
-                    7054356, 5992281, 6578637, 520150, 9757671, 6236313, 10461836, 259431, 3181407,
-                    8421271, 13826772, 1355481, 1019160, 1214245, 9156761, 345646, 6247015,
-                    12420213, 3284254, 6958105, 14962826, 11931956, 16220894, 2142357, 1853938,
-                    16630243, 12767058, 8694565, 7028336, 11968287, 9227107, 3335044, 7486166,
-                    16270316, 9537699, 13462912, 10154960, 684404, 158300, 3115260, 5439633,
-                    7399094, 10424317, 3418961, 53016, 13067147, 5460670, 11378487, 8095950,
-                    9209834, 1092078, 6190275, 8728546, 212008, 12905630,
+        13569162, 1988803, 4487552, 2666055, 2611876, 885597, 1423401, 14057705,
+        15735734, 12587235, 3285333, 6607230, 2639940, 5386554, 9464539, 6146983,
+        15387328, 9456372, 3554742, 6818103, 15972048, 2865738, 5901839, 7744725,
+        9736810, 3306, 9052736, 13440844, 8912305, 913176, 14707686, 1728239, 11663585,
+        12289556, 9098430, 13902842, 15446537, 5260328, 9161053, 5146043, 16541288,
+        1694205, 12275327, 11840126, 16452733, 11452445, 6303302, 12347467, 2010123,
+        14254604, 12648413, 8767275, 10429219, 6194920, 2640486, 833087, 2286873,
+        13876840, 930401, 1523842, 9604354, 13426678, 12715881, 1843669, 12123226,
+        3816089, 7787883, 12838759, 10038008, 11221216, 4043926, 16398884, 2258967,
+        2549370, 11557773, 3914954, 2057901, 9007775, 15643236, 14880433, 6553354,
+        6627077, 7772646, 11922986, 144975, 2855643, 1874924, 12239846, 12643863,
+        7286502, 2630086, 4608568, 1872568, 14554460, 2397008, 8190005, 1327013,
+        11496395, 3766865, 13780558, 8261126, 8856817, 1017040, 4034482, 1668310,
+        1720322, 5763631, 9784610, 3149864, 7376476, 470772, 16636619, 1429294,
+        3297293, 7303194, 9182932, 16612704, 13223066, 11238813, 6749710, 8892240,
+        6132489, 9465684, 15399858, 2891564, 7887514, 11699871, 10470447, 7437051,
+        9720707, 10834756, 6940111, 6957356, 8666892, 6225285, 15015927, 12367961,
+        899261, 16472872, 11278788, 10958556, 1117284, 7390412, 16145822, 6498412,
+        14670807, 1640341, 12291139, 8194227, 12794238, 13230383, 2314684, 9954170,
+        10314750, 13349647, 8577392, 8917104, 13844860, 9082462, 15235533, 6968832,
+        13460784, 11906303, 15643704, 1643590, 12715535, 6795446, 4187344, 5336731,
+        5143085, 3223979, 1181838, 16750363, 4508871, 6690716, 14392317, 9900609,
+        16207015, 934955, 12082028, 10685982, 14519036, 4888425, 2468366, 9474638,
+        7054356, 5992281, 6578637, 520150, 9757671, 6236313, 10461836, 259431, 3181407,
+        8421271, 13826772, 1355481, 1019160, 1214245, 9156761, 345646, 6247015,
+        12420213, 3284254, 6958105, 14962826, 11931956, 16220894, 2142357, 1853938,
+        16630243, 12767058, 8694565, 7028336, 11968287, 9227107, 3335044, 7486166,
+        16270316, 9537699, 13462912, 10154960, 684404, 158300, 3115260, 5439633,
+        7399094, 10424317, 3418961, 53016, 13067147, 5460670, 11378487, 8095950,
+        9209834, 1092078, 6190275, 8728546, 212008, 12905630,
     ]
     output = att.forward(input)
     print("Output:", output)
@@ -652,7 +648,23 @@ def test_attention():
         data.append((input, output))
     print("Data:", data)
 
+
+def test_block():
+    import random
+    data = []
+    for _ in range(5):
+        block = Block(0)
+        input = [random.randint(0, FIXED_POINT_MASK) for _ in range(240)]
+        input_original = input.copy()
+        output = block.forward(input)
+        data.append((input_original, output))
+        if input_original == output:
+            print("No change", len(data))
+            exit(0)
+    print("Data:", data)
+
+
 if __name__ == "__main__":
-    test_attention()
+    test_block()
     exit(0)
     run_model()
