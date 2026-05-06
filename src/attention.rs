@@ -58,8 +58,8 @@ pub struct Attention {
 
     softmax_exps: Box<[usize; 1024]>,
 
-    v_cache: [Vec<Box<[usize; HEAD_SIZE]>>; HEADS],
-    k_cache: [Vec<Box<[usize; HEAD_SIZE]>>; HEADS],
+    v_cache: [Vec<[usize; HEAD_SIZE]>; HEADS],
+    k_cache: [Vec<[usize; HEAD_SIZE]>; HEADS],
 }
 
 impl Attention {
@@ -137,23 +137,23 @@ impl Attention {
         }
         let matmul_key = key
             .iter()
-            .map(|k| MatMul::<EMBED_SIZE, HEAD_SIZE, false>::new(Box::new(*k)))
+            .map(MatMul::<EMBED_SIZE, HEAD_SIZE, false>::new)
             .collect::<Vec<_>>()
             .try_into()
             .unwrap();
         let matmul_value = value
             .iter()
-            .map(|v| MatMul::<EMBED_SIZE, HEAD_SIZE, false>::new(Box::new(*v)))
+            .map(MatMul::<EMBED_SIZE, HEAD_SIZE, false>::new)
             .collect::<Vec<_>>()
             .try_into()
             .unwrap();
         let matmul_query = query
             .iter()
-            .map(|q| MatMul::<EMBED_SIZE, HEAD_SIZE, false>::new(Box::new(*q)))
+            .map(MatMul::<EMBED_SIZE, HEAD_SIZE, false>::new)
             .collect::<Vec<_>>()
             .try_into()
             .unwrap();
-        let matmul_proj = MatMul::<EMBED_SIZE, EMBED_SIZE, false>::new(proj);
+        let matmul_proj = MatMul::<EMBED_SIZE, EMBED_SIZE, false>::new(&proj);
 
         let mut softmax_exps: Box<[usize; 1024]> =
             vec![0; 1024].into_boxed_slice().try_into().unwrap();
@@ -177,7 +177,7 @@ impl Attention {
         })
     }
 
-    pub fn forward(&mut self, input: &Box<[usize; EMBED_SIZE]>) -> Box<[usize; EMBED_SIZE]> {
+    pub fn forward(&mut self, input: &[usize; EMBED_SIZE]) -> Box<[usize; EMBED_SIZE]> {
         let mut proj_input: Box<[[usize; HEAD_SIZE]; HEADS]> = vec![[0; HEAD_SIZE]; HEADS]
             .into_boxed_slice()
             .try_into()
@@ -191,7 +191,7 @@ impl Attention {
                 .collect::<Vec<_>>()
                 .try_into()
                 .unwrap();
-            self.k_cache[head].push(keys_float);
+            self.k_cache[head].push(*keys_float);
 
             let values = self.matmul_value[head].forward(input);
             let values_float: Box<[usize; HEAD_SIZE]> = values
@@ -200,7 +200,7 @@ impl Attention {
                 .collect::<Vec<_>>()
                 .try_into()
                 .unwrap();
-            self.v_cache[head].push(values_float);
+            self.v_cache[head].push(*values_float);
 
             let queries = self.matmul_query[head].forward(input);
             let queries_float: Box<[usize; HEAD_SIZE]> = queries

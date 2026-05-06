@@ -1,11 +1,13 @@
 use crate::consts::*;
 
+type Weight = (bool, u8, u8, u8); // (is_minus, w1, w2, w3)
+
 #[derive(Debug)]
 pub struct MatMul<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize, const RELU: bool> {
-    weights: Box<[[(bool, u8, u8, u8); INPUT_SIZE]; OUTPUT_SIZE]>,
+    weights: Box<[[Weight; INPUT_SIZE]; OUTPUT_SIZE]>,
 }
 
-fn decode_weight(sign: bool, w: u8) -> (bool, u8, u8, u8) {
+fn decode_weight(sign: bool, w: u8) -> Weight {
     match w {
         0..64 => (sign, 8, w / 8, w % 8),
         64..96 => (sign, 7, 4 + (w - 64) / 8, w % 8),
@@ -19,8 +21,8 @@ fn decode_weight(sign: bool, w: u8) -> (bool, u8, u8, u8) {
 impl<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize, const RELU: bool>
     MatMul<INPUT_SIZE, OUTPUT_SIZE, RELU>
 {
-    pub fn new(weights: Box<[[u8; INPUT_SIZE]; OUTPUT_SIZE]>) -> Self {
-        let mut decoded_weights: Box<[[(bool, u8, u8, u8); INPUT_SIZE]; OUTPUT_SIZE]> =
+    pub fn new(weights: &[[u8; INPUT_SIZE]; OUTPUT_SIZE]) -> Self {
+        let mut decoded_weights: Box<[[Weight; INPUT_SIZE]; OUTPUT_SIZE]> =
             vec![[(false, 0, 0, 0); INPUT_SIZE]; OUTPUT_SIZE]
                 .into_boxed_slice()
                 .try_into()
@@ -43,7 +45,7 @@ impl<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize, const RELU: bool>
         }
     }
 
-    pub fn forward(&self, input: &Box<[usize; INPUT_SIZE]>) -> Box<[usize; OUTPUT_SIZE]> {
+    pub fn forward(&self, input: &[usize; INPUT_SIZE]) -> Box<[usize; OUTPUT_SIZE]> {
         // 符号拡張関数
         fn sign_extend(x: usize) -> usize {
             let x = x & MATMUL_BIG_MASK;
@@ -127,7 +129,7 @@ mod tests {
             ([[125, 133, 77], [87, 199, 167]], [83, 2, 81], [35, 2]),
         ];
         for (weights, input, ans) in data {
-            let matmul = MatMul::<3, 2, false>::new(Box::new(weights));
+            let matmul = MatMul::<3, 2, false>::new(&weights);
             let output = matmul.forward(&Box::new(input));
             assert_eq!(output, Box::new(ans));
         }
@@ -184,8 +186,8 @@ mod tests {
             15364410, 15525973, 2167098, 9009896, 11416486, 12097014, 1266462, 268242, 2071641,
             14265011,
         ];
-        let matmul = MatMul::<20, 10, false>::new(Box::new(weights));
-        let output = matmul.forward(&Box::new(input));
+        let matmul = MatMul::<20, 10, false>::new(&weights);
+        let output = matmul.forward(&input);
         assert_eq!(output, Box::new(ans));
     }
 }

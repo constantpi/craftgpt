@@ -2,7 +2,7 @@ use crate::consts::*;
 
 use color_eyre::eyre::Result;
 use std::fs::File;
-use std::io::{self, Read};
+use std::io::Read;
 
 pub struct LayerNorm {
     pub weights: Box<[usize; EMBED_SIZE]>,
@@ -10,7 +10,7 @@ pub struct LayerNorm {
 
 impl LayerNorm {
     pub fn new(index: usize) -> Result<Self> {
-        let path = format!("weights/weight_files/layernorm/ln_{}.bin", index);
+        let path = format!("weights/weight_files/layernorm/ln_{index}.bin");
         let mut f = File::open(path)?;
         let mut weights: Box<[usize; EMBED_SIZE]> =
             vec![0; EMBED_SIZE].into_boxed_slice().try_into().unwrap();

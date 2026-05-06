@@ -1,6 +1,6 @@
 use color_eyre::eyre::Result;
 use std::fs::File;
-use std::io::{self, Read, Write};
+use std::io::Read;
 
 use crate::consts::*;
 use crate::matmul::MatMul;
@@ -8,6 +8,7 @@ use crate::matmul::MatMul;
 // 中間層のサイズ
 const INTERMEDIATE_SIZE: usize = EMBED_SIZE * MLP_SCALE;
 
+#[allow(clippy::upper_case_acronyms)]
 pub struct MLP {
     matmul_up: MatMul<EMBED_SIZE, INTERMEDIATE_SIZE, true>,
     matmul_down: MatMul<INTERMEDIATE_SIZE, EMBED_SIZE, false>,
@@ -32,10 +33,10 @@ impl MLP {
             );
             let mut f = File::open(path)?;
             let mut weights = vec![0u8; 9600];
-            for j in 0..9600 {
+            for weight in weights.iter_mut() {
                 let mut buf = [0u8; 1];
                 f.read_exact(&mut buf)?;
-                weights[j] = buf[0];
+                *weight = buf[0];
             }
             for j in 0..5 {
                 let a = weights[INTERMEDIATE_SIZE * j..INTERMEDIATE_SIZE * (j + 1)]
@@ -60,10 +61,10 @@ impl MLP {
             );
             let mut f = File::open(path)?;
             let mut weights = vec![0u8; 9600];
-            for j in 0..9600 {
+            for weight in weights.iter_mut() {
                 let mut buf = [0u8; 1];
                 f.read_exact(&mut buf)?;
-                weights[j] = buf[0];
+                *weight = buf[0];
             }
             for j in 0..20 {
                 let a = weights[EMBED_SIZE * j..EMBED_SIZE * (j + 1)]
@@ -82,12 +83,12 @@ impl MLP {
             }
         }
         Ok(Self {
-            matmul_up: MatMul::new(weights_up),
-            matmul_down: MatMul::new(weights_down),
+            matmul_up: MatMul::new(&weights_up),
+            matmul_down: MatMul::new(&weights_down),
         })
     }
 
-    pub fn forward(&self, input: &Box<[usize; EMBED_SIZE]>) -> Box<[usize; EMBED_SIZE]> {
+    pub fn forward(&self, input: &[usize; EMBED_SIZE]) -> Box<[usize; EMBED_SIZE]> {
         let intermediate = self.matmul_up.forward(input);
         self.matmul_down.forward(&intermediate)
     }
