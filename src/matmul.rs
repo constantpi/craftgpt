@@ -1,5 +1,6 @@
 use crate::consts::*;
 
+#[derive(Debug)]
 pub struct MatMul<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize, const RELU: bool> {
     weights: Box<[[(bool, u8, u8, u8); INPUT_SIZE]; OUTPUT_SIZE]>,
 }

@@ -1,3 +1,4 @@
+mod attention;
 mod consts;
 mod layer_norm;
 mod matmul;
