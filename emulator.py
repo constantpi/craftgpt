@@ -582,9 +582,32 @@ def test_mlp():
     print("Input:", input)
     print("Output:", output)
 
+def test_to_float16():
+    att = Attention(0)
+    import random
+    for _ in range(10):
+        value = random.randint(0, FIXED_POINT_MASK)
+        offset = random.randint(0, 10)
+        print(f"Value: {value}, offset: {offset}")
+        print(f"Float16: {att.to_float16(value, offset)}")
+
+def test_float_mult():
+    att = Attention(0)
+    print(att.float_mult(26021, 62193, 1))
+    print(att.float_mult(0, 62193, 1))
+    import random
+    for _ in range(10):
+        a = random.randint(0, (1 << 15) - 1)
+        b = random.randint(0, (1 << 15) - 1)
+        if random.random() < 0.5:
+            a += (1 << 15)
+        if random.random() < 0.5:
+            b += (1 << 15)
+        shift = random.randint(0, 10)
+        print(f"a: {a}, b: {b}, shift: {shift}")
+        print(f"Result: {att.float_mult(a, b, shift)}")
+
 if __name__ == "__main__":
-    test_matmul()
-    exit(0)
-    test_mlp()
+    test_float_mult()
     exit(0)
     run_model()
