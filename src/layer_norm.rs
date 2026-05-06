@@ -23,7 +23,7 @@ impl LayerNorm {
         Ok(Self { weights })
     }
 
-    pub fn forward(&self, input: Box<[usize; EMBED_SIZE]>) -> Box<[usize; EMBED_SIZE]> {
+    pub fn forward(&self, input: &[usize; EMBED_SIZE]) -> Box<[usize; EMBED_SIZE]> {
         fn sub(a: usize, b: usize) -> usize {
             let ai32 = a as i32;
             let bi32 = b as i32;
@@ -191,7 +191,7 @@ mod tests {
             850571, 14622499, 14983725, 1684738, 15153141, 14612124, 2290950, 508200, 15909804,
             379035, 16020661, 2625004, 921653, 15234156, 463446,
         ];
-        let output = ln.forward(Box::new(input));
+        let output = ln.forward(&input);
         assert_eq!(output, Box::new(ans));
 
         let input2 = [
@@ -252,7 +252,7 @@ mod tests {
             16240677, 15609814, 16287748, 16419196, 16296192, 16219277, 16194055, 21655, 16043717,
             714159, 12683, 16520528, 1193847,
         ];
-        let output2 = ln.forward(Box::new(input2));
+        let output2 = ln.forward(&input2);
         assert_eq!(output2, Box::new(ans2));
         Ok(())
     }
