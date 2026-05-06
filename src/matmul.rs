@@ -27,8 +27,9 @@ impl<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize, const RELU: bool>
     pub fn forward(&self, input: &[usize; INPUT_SIZE]) -> [usize; OUTPUT_SIZE] {
         // 符号拡張関数
         fn sign_extend(x: usize) -> usize {
+            let x = x & MATMUL_BIG_MASK;
             if x > MATMUL_BIG_MASK / 2 {
-                x + 255 << (MATMUL_EXTRA_PRECISION + FIXED_POINT_SIZE)
+                x + (255 << (MATMUL_EXTRA_PRECISION + FIXED_POINT_SIZE))
             } else {
                 x
             }
@@ -37,9 +38,9 @@ impl<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize, const RELU: bool>
         let normed = input.map(|x| {
             let abs = x & FIXED_POINT_MASK;
             if abs > FIXED_POINT_MASK / 2 {
-                x + (((1 << MATMUL_EXTRA_PRECISION) - 1) << FIXED_POINT_SIZE)
+                abs + (((1 << MATMUL_EXTRA_PRECISION) - 1) << FIXED_POINT_SIZE)
             } else {
-                x
+                abs
             }
         });
 
@@ -94,5 +95,61 @@ mod tests {
             let output = matmul.forward(&input);
             assert_eq!(output, ans);
         }
+
+        let weights = [
+            [
+                25, 43, 194, 243, 2, 123, 191, 159, 214, 122, 19, 22, 103, 122, 145, 51, 15, 242,
+                226, 97,
+            ],
+            [
+                27, 73, 22, 26, 173, 197, 153, 108, 143, 12, 232, 113, 103, 183, 19, 60, 54, 192,
+                188, 75,
+            ],
+            [
+                149, 106, 16, 237, 171, 187, 25, 236, 74, 227, 153, 168, 245, 208, 137, 24, 110,
+                199, 1, 149,
+            ],
+            [
+                201, 222, 97, 172, 236, 171, 225, 234, 124, 215, 7, 249, 127, 210, 164, 192, 48,
+                126, 90, 103,
+            ],
+            [
+                166, 125, 106, 146, 246, 116, 242, 100, 78, 132, 231, 22, 107, 168, 75, 13, 196,
+                200, 18, 14,
+            ],
+            [
+                91, 24, 70, 120, 37, 246, 251, 217, 116, 23, 194, 18, 74, 213, 240, 205, 107, 57,
+                54, 125,
+            ],
+            [
+                55, 27, 200, 42, 208, 161, 11, 214, 72, 0, 237, 250, 237, 150, 71, 132, 80, 88,
+                235, 70,
+            ],
+            [
+                196, 28, 196, 68, 226, 97, 24, 235, 157, 70, 102, 213, 73, 195, 82, 217, 52, 60,
+                235, 89,
+            ],
+            [
+                221, 84, 147, 170, 150, 162, 174, 143, 29, 189, 114, 188, 248, 134, 24, 228, 249,
+                206, 251, 93,
+            ],
+            [
+                91, 62, 186, 61, 129, 73, 254, 55, 24, 104, 30, 232, 36, 178, 146, 6, 202, 38, 57,
+                134,
+            ],
+        ];
+        let input = [
+            1237388, 11297805, 14601180, 12773817, 2145272, 15188795, 5978039, 3419513, 12410957,
+            2715737, 4511459, 12908708, 9169872, 8396674, 13577819, 10958113, 6583058, 10023077,
+            13014018, 11954757,
+        ];
+
+        let ans = [
+            15364410, 15525973, 2167098, 9009896, 11416486, 12097014, 1266462, 268242, 2071641,
+            14265011,
+        ];
+        let matmul = MatMul::<20, 10, false>::new(weights);
+        let output = matmul.forward(&input);
+        assert_eq!(output, ans);
     }
 }
