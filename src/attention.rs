@@ -279,7 +279,7 @@ mod tests {
 
     #[test]
     fn test_attention() -> Result<()> {
-        let mut attention = Attention::new(1)?;
+        let mut attention = Attention::new(0)?;
         let data = [
             (
                 [
