@@ -558,9 +558,9 @@ def run_model():
 
 def test_matmul():
     import random
-    weights = [[random.randint(0, 255) for _ in range(3)] for _ in range(2)]
-    matmul = MatMul(weights, 3, 2)
-    input = [random.randint(0, 255) for _ in range(3)]
+    weights = [[random.randint(0, 255) for _ in range(20)] for _ in range(10)]
+    matmul = MatMul(weights, 20, 10)
+    input = [random.randint(0, FIXED_POINT_MASK) for _ in range(20)]
     output = matmul.forward(input)
     print("Weights:", weights)
     print("Input:", input)
@@ -574,8 +574,17 @@ def test_layernorm():
     print("Input:", input)
     print("Output:", output)
 
+def test_mlp():
+    mlp = MLP(0)
+    import random
+    input = [random.randint(0, FIXED_POINT_MASK) for _ in range(240)]
+    output = mlp.forward(input)
+    print("Input:", input)
+    print("Output:", output)
 
 if __name__ == "__main__":
-    test_layernorm()
+    test_matmul()
+    exit(0)
+    test_mlp()
     exit(0)
     run_model()
