@@ -664,7 +664,21 @@ def test_block():
     print("Data:", data)
 
 
+def test_embedding():
+    embedding = Embedding()
+    print(embedding.get_weights(1621, 25))
+    exit(0)
+    import random
+    data = []
+    for _ in range(5):
+        token = random.randint(0, 1919)
+        pos = random.randint(0, 63)
+        weights = embedding.get_weights(token, pos)
+        data.append((token, pos, weights))
+    print("Data:", data)
+
+
 if __name__ == "__main__":
-    test_block()
+    test_embedding()
     exit(0)
     run_model()
