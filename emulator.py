@@ -678,7 +678,18 @@ def test_embedding():
     print("Data:", data)
 
 
+def test_unembedding():
+    unembedding = Unembedding()
+    import random
+    data = []
+    for _ in range(5):
+        input = [random.randint(0, FIXED_POINT_MASK) for _ in range(240)]
+        output = unembedding.forward(input)
+        data.append((input, output))
+    print("Data:", data)
+
+
 if __name__ == "__main__":
-    test_embedding()
+    test_unembedding()
     exit(0)
     run_model()
