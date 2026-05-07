@@ -695,7 +695,16 @@ def test_prng():
         print(rng.next())
 
 
+def test_prompt():
+    tokens = []
+    with open("tokens.txt", "r") as f:
+        for line in f.readlines():
+            tokens.append(line.strip())
+    prompt = get_prompt(tokens)
+    print(prompt)
+
+
 if __name__ == "__main__":
-    test_prng()
+    test_prompt()
     exit(0)
     run_model()
