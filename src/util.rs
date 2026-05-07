@@ -63,6 +63,10 @@ impl Prompt {
         }
         Ok(ans)
     }
+
+    pub fn get_token(&self, token_id: usize) -> Option<&str> {
+        self.tokens.get(token_id).map(|s| s.as_str())
+    }
 }
 
 #[cfg(test)]
