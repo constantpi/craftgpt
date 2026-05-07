@@ -1,6 +1,6 @@
 use color_eyre::eyre::Result;
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::Read;
 use std::vec;
 
 use crate::consts::*;
@@ -166,8 +166,6 @@ impl Unembedding {
 
 #[cfg(test)]
 mod tests {
-    use crate::embed;
-
     use super::*;
 
     #[test]

@@ -8,7 +8,7 @@ use crate::layer_norm::LayerNorm;
 
 pub struct Model {
     embedding: Embedding,
-    blocks: [Block; 6],
+    blocks: [Block; LAYERS],
     layer_norm: LayerNorm,
     unembedding: Unembedding,
     index: usize,
@@ -17,8 +17,8 @@ pub struct Model {
 impl Model {
     pub fn new() -> Result<Self> {
         let embedding = Embedding::new()?;
-        let blocks: [Block; 6] = (0..6)
-            .map(|i| Block::new(i))
+        let blocks: [Block; LAYERS] = (0..LAYERS)
+            .map(Block::new)
             .collect::<Result<Vec<_>>>()?
             .try_into()
             .map_err(|_| eyre!("Failed to create blocks array"))?;

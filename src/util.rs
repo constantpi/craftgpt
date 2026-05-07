@@ -2,6 +2,7 @@ use color_eyre::eyre::Result;
 use std::fs::File;
 use std::io::Read;
 
+#[allow(clippy::upper_case_acronyms)]
 pub struct PRNG {
     state: usize,
 }
@@ -42,7 +43,7 @@ impl Prompt {
         // 最初にスペースを追加し全体を小文字にする
         let mut prompt = format!(" {text}").to_lowercase();
         let mut ans = vec![0];
-        while prompt.len() > 0 {
+        while !prompt.is_empty() {
             let mut maxlen = 0;
             let mut token_id = None;
             for (i, token) in self.tokens.iter().enumerate() {

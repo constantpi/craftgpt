@@ -16,6 +16,6 @@ use crate::chat::Chat;
 fn main() -> Result<()> {
     let mut chat = Chat::new(1)?;
     let response = chat.invoke("Hello")?;
-    println!("{}", response);
+    println!("{response}");
     Ok(())
 }
