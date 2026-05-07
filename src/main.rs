@@ -15,7 +15,12 @@ use crate::chat::Chat;
 
 fn main() -> Result<()> {
     let mut chat = Chat::new(1)?;
-    let response = chat.invoke("Hello")?;
-    println!("{response}");
-    Ok(())
+    // let response = chat.invoke("Hello")?;
+    // println!("{response}");
+    loop {
+        let mut input = String::new();
+        std::io::stdin().read_line(&mut input)?;
+        let response = chat.invoke(input.trim())?;
+        println!("{response}");
+    }
 }
