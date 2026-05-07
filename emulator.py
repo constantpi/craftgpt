@@ -689,7 +689,13 @@ def test_unembedding():
     print("Data:", data)
 
 
+def test_prng():
+    rng = PRNG(100)
+    for _ in range(10):
+        print(rng.next())
+
+
 if __name__ == "__main__":
-    test_unembedding()
+    test_prng()
     exit(0)
     run_model()
